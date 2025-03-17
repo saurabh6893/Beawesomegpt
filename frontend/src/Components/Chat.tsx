@@ -12,19 +12,21 @@ const Chat: React.FC = () => {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  // ✅ Fetch chat history from MongoDB when component mounts
   useEffect(() => {
-    const storedChat = localStorage.getItem("chatHistory");
-    if (storedChat) {
+    const fetchChatHistory = async () => {
       try {
-        setChat(JSON.parse(storedChat));
+        const response = await axios.get("http://localhost:5000/api/chat/history");
+        setChat(response.data); // ✅ Store fetched chat history
       } catch (error) {
-        console.error("Failed to parse chat history:", error);
+        console.error("Error fetching chat history:", error);
       }
-    }
+    };
+    fetchChatHistory();
   }, []);
 
+  // ✅ Animate chat messages & auto-scroll
   useEffect(() => {
-    localStorage.setItem("chatHistory", JSON.stringify(chat));
     gsap.fromTo(
       ".chat-bubble",
       { opacity: 0, y: 20 },
@@ -36,6 +38,7 @@ const Chat: React.FC = () => {
     });
   }, [chat]);
 
+  // ✅ Function to send messages
   const sendMsg = async () => {
     if (!message.trim()) return;
     const userMessage = message.trim();
@@ -53,10 +56,18 @@ const Chat: React.FC = () => {
       setChat([...updatedChat, { user: "AI", text: aiResponse }]);
     } catch (err) {
       console.error("Error:", err);
-      setChat([
-        ...updatedChat,
-        { user: "AI", text: "Error: AI is unavailable." },
-      ]);
+      setChat([...updatedChat, { user: "AI", text: "Error: AI is unavailable." }]);
+    }
+  };
+
+  // ✅ Function to clear chat
+  const clearChat = async () => {
+    try {
+      await axios.delete("http://localhost:5000/api/chat/clear"); // ✅ Call backend API
+      setChat([]); // ✅ Clear chat state
+      localStorage.removeItem("chatHistory"); // ✅ Clear local storage (if used)
+    } catch (error) {
+      console.error("Error clearing chat:", error);
     }
   };
 
@@ -64,10 +75,7 @@ const Chat: React.FC = () => {
     <div className="chat-container">
       <div className="chat-box" ref={chatContainerRef}>
         {chat.map((msg, i) => (
-          <div
-            key={i}
-            className={`chat-bubble ${msg.user === "You" ? "user" : "ai"}`}
-          >
+          <div key={i} className={`chat-bubble ${msg.user === "You" ? "user" : "ai"}`}>
             <strong>{msg.user}:</strong> {msg.text}
           </div>
         ))}
@@ -82,6 +90,9 @@ const Chat: React.FC = () => {
         />
         <button className="chat-send-button" onClick={sendMsg}>
           Send
+        </button>
+        <button className="chat-clear-button" onClick={clearChat}>
+          Clear Chat
         </button>
       </div>
     </div>
