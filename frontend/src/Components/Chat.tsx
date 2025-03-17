@@ -13,11 +13,30 @@ const Chat: React.FC = () => {
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    // Simple animation for testing
+    gsap.to(".chat-container", {
+      opacity: 1,
+      duration: 0.5,
+      ease: "power2.out"
+    });
+  
+    gsap.to(".chat-bubble", {
+      opacity: 1,
+      y: 0,
+      stagger: 0.1,
+      duration: 0.4,
+      ease: "back.out(1.2)"
+    });
+  }, [chat]);
+
   // ✅ Fetch chat history from MongoDB when component mounts
   useEffect(() => {
     const fetchChatHistory = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/api/chat/history");
+        const response = await axios.get(
+          "http://localhost:5000/api/chat/history"
+        );
         setChat(response.data); // ✅ Store fetched chat history
       } catch (error) {
         console.error("Error fetching chat history:", error);
@@ -44,22 +63,25 @@ const Chat: React.FC = () => {
     if (!message.trim()) return;
     const userMessage = message.trim();
     setMessage("");
-  
+
     try {
       // Add user message to local state immediately
-      setChat(prev => [...prev, { user: "You", text: userMessage }]);
-      
+      setChat((prev) => [...prev, { user: "You", text: userMessage }]);
+
       // Send only the message - history will be handled by backend
       const response = await axios.post("http://localhost:5000/api/chat", {
-        message: userMessage // Don't send history from frontend
+        message: userMessage, // Don't send history from frontend
       });
-      
+
       // Add AI response to local state
       const aiResponse = response.data.reply || "I didn't understand that.";
-      setChat(prev => [...prev, { user: "Barney", text: aiResponse }]);
+      setChat((prev) => [...prev, { user: "Barney", text: aiResponse }]);
     } catch (err) {
       console.error("Error:", err);
-      setChat(prev => [...prev, { user: "AI", text: "Error: AI is unavailable." }]);
+      setChat((prev) => [
+        ...prev,
+        { user: "AI", text: "Error: AI is unavailable." },
+      ]);
     }
   };
   // ✅ Function to clear chat
@@ -76,7 +98,10 @@ const Chat: React.FC = () => {
     <div className="chat-container">
       <div className="chat-box" ref={chatContainerRef}>
         {chat.map((msg, i) => (
-          <div key={i} className={`chat-bubble ${msg.user === "You" ? "user" : "ai"}`}>
+          <div
+            key={i}
+            className={`chat-bubble ${msg.user === "You" ? "user" : "ai"}`}
+          >
             <strong>{msg.user}:</strong> {msg.text}
           </div>
         ))}
