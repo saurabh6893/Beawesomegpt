@@ -56,7 +56,7 @@ const Chat: React.FC = () => {
       
       // Add AI response to local state
       const aiResponse = response.data.reply || "I didn't understand that.";
-      setChat(prev => [...prev, { user: "AI", text: aiResponse }]);
+      setChat(prev => [...prev, { user: "Barney", text: aiResponse }]);
     } catch (err) {
       console.error("Error:", err);
       setChat(prev => [...prev, { user: "AI", text: "Error: AI is unavailable." }]);
