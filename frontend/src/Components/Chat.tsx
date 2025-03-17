@@ -5,8 +5,9 @@ import gsap from "gsap";
 interface ChatMessage {
   user: string;
   text: string;
+  _id?: string; // Add MongoDB ID
+  timestamp?: Date;
 }
-
 const Chat: React.FC = () => {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState<ChatMessage[]>([]);
@@ -43,29 +44,29 @@ const Chat: React.FC = () => {
     if (!message.trim()) return;
     const userMessage = message.trim();
     setMessage("");
-
-    const updatedChat = [...chat, { user: "You", text: userMessage }];
-    setChat(updatedChat);
-
+  
     try {
+      // Add user message to local state immediately
+      setChat(prev => [...prev, { user: "You", text: userMessage }]);
+      
+      // Send only the message - history will be handled by backend
       const response = await axios.post("http://localhost:5000/api/chat", {
-        history: updatedChat,
-        message: userMessage,
+        message: userMessage // Don't send history from frontend
       });
+      
+      // Add AI response to local state
       const aiResponse = response.data.reply || "I didn't understand that.";
-      setChat([...updatedChat, { user: "AI", text: aiResponse }]);
+      setChat(prev => [...prev, { user: "AI", text: aiResponse }]);
     } catch (err) {
       console.error("Error:", err);
-      setChat([...updatedChat, { user: "AI", text: "Error: AI is unavailable." }]);
+      setChat(prev => [...prev, { user: "AI", text: "Error: AI is unavailable." }]);
     }
   };
-
   // ✅ Function to clear chat
   const clearChat = async () => {
     try {
       await axios.delete("http://localhost:5000/api/chat/clear"); // ✅ Call backend API
       setChat([]); // ✅ Clear chat state
-      localStorage.removeItem("chatHistory"); // ✅ Clear local storage (if used)
     } catch (error) {
       console.error("Error clearing chat:", error);
     }
