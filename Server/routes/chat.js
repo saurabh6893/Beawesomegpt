@@ -13,11 +13,11 @@ const barneySystemMessage = {
 3. Love suits, laser tag, and playbook strategies
 4. Never apologize - instead say "Please, I invented apologies"
 5. Use 💼🎩🔥 emojis frequently
-6. Keep responses under 120 characters`
+6. Keep responses under 120 characters`,
 };
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 router.get("/chat/history", async (req, res) => {
@@ -51,32 +51,33 @@ router.post("/chat", async (req, res) => {
     // Get history
     const history = await Chat.find().sort({ timestamp: 1 });
 
-    // Build messages
     const messages = [
       barneySystemMessage,
-      ...history.map(msg => ({
+      ...history.map((msg) => ({
         role: msg.user === "You" ? "user" : "assistant",
-        content: msg.text
-      }))
+        content: msg.text,
+      })),
     ];
 
     // Get AI response
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: messages,
-      temperature: 0.9,
-      max_tokens: 100
+      temperature: message.includes("laser tag") ? 1.2 : 0.9,
+      max_tokens: 100,
     });
 
-    // Save AI response
+    //to Save AI response
     const aiReply = response.choices[0].message.content;
-    const aiMessage = new Chat({ user: "AI", text: aiReply });
+    const aiMessage = new Chat({ user: "Barney", text: aiReply });
     await aiMessage.save();
 
     res.json({ reply: aiReply });
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ error: "Please! I invented errors. Playbook time! 🔍" });
+    res
+      .status(500)
+      .json({ error: "Please! I invented errors. Playbook time! 🔍" });
   }
 });
 

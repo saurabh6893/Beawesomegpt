@@ -1,3 +1,4 @@
+/* App.css */
 * {
   margin: 0;
   padding: 0;
@@ -6,7 +7,12 @@
 
 body {
   overflow: hidden;
-  font-family: 'Arial', sans-serif;
+  font-family: "Arial", sans-serif;
+  background: linear-gradient(
+    45deg,
+    #1a1a2e 0%,
+    #16213e 100%
+  ); /* Move gradient here */
 }
 
 .mainbody {
@@ -23,13 +29,15 @@ body {
   width: 100%;
   max-width: 1200px;
   height: 90vh;
-  background: rgba(25, 25, 45, 0.98);
+  background: #19192d !important; /* Solid color fallback */
+  background: rgba(25, 25, 45, 1) !important; /* Full opacity */
   border-radius: 20px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border: 2px solid #646cff;
   box-shadow: 0 0 30px rgba(100, 108, 255, 0.2);
+  opacity: 1 !important; /* Force visibility */
 }
 
 .chat-box {
@@ -51,10 +59,15 @@ body {
   word-wrap: break-word;
   font-size: 1.1em;
   line-height: 1.4;
-  animation: bubble-entry 0.5s ease;
   min-width: 120px;
   opacity: 0;
   transform: translateY(20px);
+  transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.chat-bubble:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(100, 108, 255, 0.3);
 }
 
 /* User Messages (Right Side) */
@@ -128,16 +141,53 @@ body {
 }
 
 .chat-send-button {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, #646cff, #535bf2);
+  color: white;
+}
+
+.chat-send-button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chat-send-button:hover::before {
+  left: 150%;
 }
 
 .chat-clear-button {
   background: linear-gradient(135deg, #ff4d4d, #d93636);
 }
 
-.chat-send-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 5px 20px rgba(100, 108, 255, 0.4);
+.chat-bubble span {
+  display: inline-block;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 1.94); /* Bouncy easing */
+  transform-origin: center bottom;
+  background-size: 250% 100%;
+  background-position: 100% 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background-repeat: no-repeat;
+}
+
+.chat-bubble span:hover {
+  transform: scale(1.10) translateZ(0); /* 5% scale up */
+  background-position: 0 0;
+  cursor: pointer;
+  z-index: 1; /* Bring hovered word above others */
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
 }
 
 @keyframes bubble-entry {

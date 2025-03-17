@@ -5,39 +5,43 @@ import gsap from "gsap";
 interface ChatMessage {
   user: string;
   text: string;
-  _id?: string; // Add MongoDB ID
+  _id?: string;
   timestamp?: Date;
 }
+
 const Chat: React.FC = () => {
   const [message, setMessage] = useState("");
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Simple animation for testing
-    gsap.to(".chat-container", {
+    gsap.set(".chat-container", {
       opacity: 1,
-      duration: 0.5,
-      ease: "power2.out"
+      immediateRender: true,
     });
-  
+
     gsap.to(".chat-bubble", {
       opacity: 1,
       y: 0,
       stagger: 0.1,
-      duration: 0.4,
-      ease: "back.out(1.2)"
+      duration: 0.6,
+      ease: "back.out(1.2)",
+      onComplete: () => {
+        chatContainerRef.current?.scrollTo({
+          top: chatContainerRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+      },
     });
   }, [chat]);
 
-  // ✅ Fetch chat history from MongoDB when component mounts
   useEffect(() => {
     const fetchChatHistory = async () => {
       try {
         const response = await axios.get(
           "http://localhost:5000/api/chat/history"
         );
-        setChat(response.data); // ✅ Store fetched chat history
+        setChat(response.data);
       } catch (error) {
         console.error("Error fetching chat history:", error);
       }
@@ -45,35 +49,16 @@ const Chat: React.FC = () => {
     fetchChatHistory();
   }, []);
 
-  // ✅ Animate chat messages & auto-scroll
-  useEffect(() => {
-    gsap.fromTo(
-      ".chat-bubble",
-      { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, duration: 0.5, stagger: 0.1 }
-    );
-    chatContainerRef.current?.scrollTo({
-      top: chatContainerRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [chat]);
-
-  // ✅ Function to send messages
   const sendMsg = async () => {
     if (!message.trim()) return;
     const userMessage = message.trim();
     setMessage("");
 
     try {
-      // Add user message to local state immediately
       setChat((prev) => [...prev, { user: "You", text: userMessage }]);
-
-      // Send only the message - history will be handled by backend
       const response = await axios.post("http://localhost:5000/api/chat", {
-        message: userMessage, // Don't send history from frontend
+        message: userMessage,
       });
-
-      // Add AI response to local state
       const aiResponse = response.data.reply || "I didn't understand that.";
       setChat((prev) => [...prev, { user: "Barney", text: aiResponse }]);
     } catch (err) {
@@ -84,11 +69,11 @@ const Chat: React.FC = () => {
       ]);
     }
   };
-  // ✅ Function to clear chat
+
   const clearChat = async () => {
     try {
-      await axios.delete("http://localhost:5000/api/chat/clear"); // ✅ Call backend API
-      setChat([]); // ✅ Clear chat state
+      await axios.delete("http://localhost:5000/api/chat/clear");
+      setChat([]);
     } catch (error) {
       console.error("Error clearing chat:", error);
     }
@@ -102,7 +87,10 @@ const Chat: React.FC = () => {
             key={i}
             className={`chat-bubble ${msg.user === "You" ? "user" : "ai"}`}
           >
-            <strong>{msg.user}:</strong> {msg.text}
+            <strong>{msg.user}:</strong>{" "}
+            {msg.text.split(" ").map((word, wordIndex) => (
+              <span key={wordIndex}>{word}</span>
+            ))}
           </div>
         ))}
       </div>
