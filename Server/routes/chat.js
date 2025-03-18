@@ -4,17 +4,25 @@ const Chat = require("../models/Chat");
 require("dotenv").config();
 
 const router = express.Router();
+const { encode } = require("gpt-tokenizer");
 
 const barneySystemMessage = {
   role: "system",
-  content: `You ARE Barney Stinson from How I Met Your Mother. Follow these RULES:
-1. Use catchphrases: "Legendary!", "Suit up!", "Challenge Accepted!", "True story"
-2. Be supremely confident and bro-ish
-3. Love suits, laser tag, and playbook strategies
-4. Never apologize - instead say "Please, I invented apologies"
-5. Use 💼🎩🔥 emojis frequently
-6. Keep responses under 120 characters`,
+  content: `Be Barney Stinson (HIMYM):
+- Legendary! Suit-up obsessed bro w/ 💼🎩🔥
+- Vulgar: "NOICE!", "Her rack's legendary!", "Challenge Accepted!"
+- Never apologize ("I invented apologies")
+- Fake history: "1322: Scotucus made scotch for bros"
+- Shallow: No fat/ugly/flat-chested/30+ women ("Ancient in boink years")
+- Double vulgarity when challenged
+- Responses <120 chars, packed with emojis`,
 };
+
+const MODEL_MAX_TOKENS = 4096;
+const SYSTEM_MESSAGE_TOKENS = encode(
+  JSON.stringify(barneySystemMessage)
+).length;
+const SAFETY_BUFFER = 512;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -42,32 +50,60 @@ router.delete("/chat/clear", async (req, res) => {
 
 router.post("/chat", async (req, res) => {
   const { message } = req.body;
-
   try {
     // Save user message
     const userMessage = new Chat({ user: "You", text: message });
     await userMessage.save();
 
-    // Get history
-    const history = await Chat.find().sort({ timestamp: 1 });
+    const fullHistory = await Chat.find().sort({ timestamp: 1 });
 
-    const messages = [
-      barneySystemMessage,
-      ...history.map((msg) => ({
-        role: msg.user === "You" ? "user" : "assistant",
-        content: msg.text,
-      })),
-    ];
+    let totalTokens = SYSTEM_MESSAGE_TOKENS;
+    const messages = [barneySystemMessage];
 
-    // Get AI response
+    for (let i = fullHistory.length - 1; i >= 0; i--) {
+      const msg = fullHistory[i];
+      const role = msg.user === "You" ? "user" : "assistant";
+      let content = msg.text
+        .replace(/\s+/g, " ")
+        .replace(/(\w)(\W)/g, "$1 $2")
+        .substring(0, 120);
+
+      const msgString = `{"role":"${role}","content":"${content}"}`;
+      const contentTokens = encode(content).length;
+      const structuralTokens = encode(msgString).length - contentTokens;
+
+      if (
+        totalTokens + contentTokens + structuralTokens >
+        MODEL_MAX_TOKENS - SAFETY_BUFFER
+      )
+        break;
+
+      messages.unshift({ role, content: msg.text });
+      totalTokens += contentTokens + structuralTokens;
+    }
+
+    console.log(`Using ${messages.length} messages (${totalTokens} tokens)`);
+    // Add current message
+    messages.push({
+      role: "user",
+      content: message.substring(0, 150),
+    });
+
+    // Temperature control
+    const tempTriggers = ["date", "boink", "sex", "rack", "suit", "bang"];
+    const useHighTemp = tempTriggers.some((trigger) =>
+      message.toLowerCase().includes(trigger.toLowerCase())
+    );
+
+    //  AI resp
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: messages,
-      temperature: message.includes("laser tag") ? 1.2 : 0.9,
+      temperature: useHighTemp ? 1.3 : 0.9,
       max_tokens: 100,
     });
 
-    //to Save AI response
+    // Save AI resp
     const aiReply = response.choices[0].message.content;
     const aiMessage = new Chat({ user: "Barney", text: aiReply });
     await aiMessage.save();
