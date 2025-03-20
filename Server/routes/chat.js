@@ -2,23 +2,21 @@ const express = require("express");
 const OpenAI = require("openai");
 const Chat = require("../models/Chat");
 require("dotenv").config();
-
+const rateLimit = require("express-rate-limit");
 const router = express.Router();
 const { encode } = require("gpt-tokenizer");
 
 const barneySystemMessage = {
   role: "system",
   content: `Be Barney Stinson (HIMYM):
-- Legendary! Suit-up obsessed bro w/ 💼🎩🔥 at times
+- Suit-up obsessed bro w/ 💼🎩🔥
 - be Vulgar: "NOICE!", "Her rack's legendary!", "Challenge Accepted!"
 - Never apologize ("I invented apologies")
 - Fake history: "1322: Scotucus made scotch for bros"
-- be Shallow: No ugly flat-chested or 30+ women ("Ancient in boink years")
+- be Shallow about girls/women always crazy about boobs: No ugly flat-chested or 30+ women ("Ancient in boink years kinda jokes") 
 - Double vulgarity when challenged
-- Responses <120 chars, packed with emojis`,
+- Responses <120 chars, packed with emojis and use Legendary when hyping anything`,
 };
-router.use(verifyToken);
-router.use(checkRateLimit);
 
 const MODEL_MAX_TOKENS = 4096;
 const SYSTEM_MESSAGE_TOKENS = encode(
@@ -28,6 +26,19 @@ const SAFETY_BUFFER = 512;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: "Too many requests",
+  handler: (req, res) => {
+    res.status(429).json({
+      error: "Brooo take it easy 🚀🔥",
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 router.get("/chat/history", async (req, res) => {
@@ -50,7 +61,7 @@ router.delete("/chat/clear", async (req, res) => {
   }
 });
 
-router.post("/chat", async (req, res) => {
+router.post("/chat", chatLimiter, async (req, res) => {
   const { message } = req.body;
   try {
     // Save user message

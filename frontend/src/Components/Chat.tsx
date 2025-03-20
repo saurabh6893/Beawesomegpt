@@ -64,10 +64,13 @@ const Chat: React.FC = () => {
       setChat((prev) => [...prev, { user: "Barney", text: aiResponse }]);
     } catch (err) {
       console.error("Error:", err);
-      setChat((prev) => [
-        ...prev,
-        { user: "AI", text: "Error: AI is unavailable." },
-      ]);
+      let errorMessage = "Error: AI is unavailable.";
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 429) {
+          errorMessage = err.response.data.error || "Slow down, legend! 🔥";
+        }
+      }
+      setChat((prev) => [...prev, { user: "AI", text: errorMessage }]);
     }
   };
 
