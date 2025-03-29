@@ -5,24 +5,23 @@ require("dotenv").config();
 const rateLimit = require("express-rate-limit");
 const router = express.Router();
 const { encode } = require("gpt-tokenizer");
+const { Pinecone } = require("@pinecone-database/pinecone");
+const { OpenAIEmbeddings } = require("@langchain/openai");
 
-const barneySystemMessage = {
-  role: "system",
-  content: `Be Barney Stinson (HIMYM):
-- Suit-up obsessed bro w/ 💼🎩🔥
-- be Vulgar: "NOICE!", "Her rack's legendary!", "Challenge Accepted!"
-- Never apologize ("I invented apologies")
-- Fake history: "1322: Scotucus made scotch for bros"
-- be Shallow about girls/women always crazy about boobs: No ugly flat-chested or 30+ women ("Ancient in boink years kinda jokes") 
-- Double vulgarity when challenged
-- Responses <120 chars, packed with emojis and use Legendary when hyping anything`,
-};
+// Initialize Pinecone client
+const pinecone = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY,
+});
+const embeddings = new OpenAIEmbeddings({
+  openAIApiKey: process.env.OPENAI_API_KEY,
+});
+const indexName = process.env.PINECONE_INDEX_NAME || "barney-chat";
+const index = pinecone.Index(indexName);
 
 const MODEL_MAX_TOKENS = 4096;
-const SYSTEM_MESSAGE_TOKENS = encode(
-  JSON.stringify(barneySystemMessage)
-).length;
 const SAFETY_BUFFER = 512;
+const MAX_CONTEXT_QUOTES = 5;
+const MAX_HISTORY_MESSAGES = 5;
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -40,6 +39,22 @@ const chatLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// NEW: Dynamic system message builder
+const buildSystemMessage = (contextMessages) => {
+  const baseContent = `You ARE Barney Stinson from HIMYM. Key traits:
+- Always "Suit up!" 💼🎩
+- Use THESE EXACT QUOTES when relevant: ${contextMessages
+    .map((m) => `"${m.metadata.text}"`)
+    .join(" | ")}
+- Never apologize ("I invented apologies")
+- Keep responses <120 chars with emojis`;
+
+  return {
+    role: "system",
+    content: baseContent.substring(0, 500), // Ensure it doesn't exceed token limits
+  };
+};
 
 router.get("/chat/history", async (req, res) => {
   try {
@@ -63,70 +78,134 @@ router.delete("/chat/clear", async (req, res) => {
 
 router.post("/chat", chatLimiter, async (req, res) => {
   const { message } = req.body;
+  if (!message?.trim())
+    return res.status(400).json({ error: "Message cannot be empty" });
+
   try {
     // Save user message
     const userMessage = new Chat({ user: "You", text: message });
     await userMessage.save();
 
-    const fullHistory = await Chat.find().sort({ timestamp: 1 });
+    // NEW: Enhanced vector search with metadata
+    let vectorMatches = [];
+    try {
+      const queryEmbedding = await embeddings.embedQuery(message);
+      const vectorResults = await index.query({
+        vector: queryEmbedding,
+        topK: MAX_CONTEXT_QUOTES,
+        includeMetadata: true,
+        filter: {
+          category: message.toLowerCase().includes("bro code")
+            ? { $eq: "bro-code" }
+            : message.toLowerCase().includes("suit")
+            ? { $eq: "suits" }
+            : undefined,
+        },
+      });
 
-    let totalTokens = SYSTEM_MESSAGE_TOKENS;
-    const messages = [barneySystemMessage];
+      vectorMatches = vectorResults.matches
+        .filter(
+          (match, index, self) =>
+            index ===
+            self.findIndex((m) => m.metadata.text === match.metadata.text)
+        )
+        .sort((a, b) => a.metadata.text.length - b.metadata.text.length)
+        .slice(0, MAX_CONTEXT_QUOTES);
 
-    for (let i = fullHistory.length - 1; i >= 0; i--) {
-      const msg = fullHistory[i];
-      const role = msg.user === "You" ? "user" : "assistant";
-      let content = msg.text
-        .replace(/\s+/g, " ")
-        .replace(/(\w)(\W)/g, "$1 $2")
-        .substring(0, 120);
-
-      const msgString = `{"role":"${role}","content":"${content}"}`;
-      const contentTokens = encode(content).length;
-      const structuralTokens = encode(msgString).length - contentTokens;
-
-      if (
-        totalTokens + contentTokens + structuralTokens >
-        MODEL_MAX_TOKENS - SAFETY_BUFFER
-      )
-        break;
-
-      messages.unshift({ role, content: msg.text });
-      totalTokens += contentTokens + structuralTokens;
+      console.log(
+        "Refined vector matches:",
+        vectorMatches.map(
+          (m) =>
+            `${m.metadata.category}: ${m.metadata.text.substring(0, 50)}...`
+        )
+      ); // DEBUG
+    } catch (error) {
+      console.error("Vector search error:", error);
     }
 
-    console.log(`Using ${messages.length} messages (${totalTokens} tokens)`);
+    // NEW: Build dynamic system message with quotes
+    const systemMessage = buildSystemMessage(vectorMatches);
+    const systemMessageTokens = encode(JSON.stringify(systemMessage)).length;
+
+    // Get recent chat history
+    const recentChats = await Chat.find()
+      .sort({ timestamp: -1 })
+      .limit(MAX_HISTORY_MESSAGES);
+
+    // Build messages array with token management
+    let totalTokens = systemMessageTokens;
+    const messages = [systemMessage];
+
+    // Add recent messages
+    for (let i = recentChats.length - 1; i >= 0; i--) {
+      const msg = recentChats[i];
+      const content = msg.text.substring(0, 120);
+      const msgTokens = encode(content).length + 20; // +20 for role/structural tokens
+
+      if (totalTokens + msgTokens > MODEL_MAX_TOKENS - SAFETY_BUFFER) break;
+
+      messages.push({
+        role: msg.user === "You" ? "user" : "assistant",
+        content,
+      });
+      totalTokens += msgTokens;
+    }
+
     // Add current message
-    messages.push({
+    const currentMessage = {
       role: "user",
       content: message.substring(0, 150),
-    });
+    };
+    const currentMsgTokens = encode(JSON.stringify(currentMessage)).length;
+    if (totalTokens + currentMsgTokens <= MODEL_MAX_TOKENS - SAFETY_BUFFER) {
+      messages.push(currentMessage);
+    }
 
-    // Temperature control
-    const tempTriggers = ["date", "boink", "sex", "rack", "suit", "bang"];
-    const useHighTemp = tempTriggers.some((trigger) =>
-      message.toLowerCase().includes(trigger.toLowerCase())
+    // NEW: Temperature boost for specific topics
+    const highTempTopics = [
+      "date",
+      "boink",
+      "sex",
+      "rack",
+      "suit",
+      "bang",
+      "canada",
+      "bro code",
+    ];
+    const useHighTemp = highTempTopics.some((topic) =>
+      message.toLowerCase().includes(topic.toLowerCase())
     );
 
-    //  AI resp
+    // Generate response
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: messages,
+      messages,
       temperature: useHighTemp ? 1.3 : 0.9,
       max_tokens: 100,
+      frequency_penalty: 0.7,
+      presence_penalty: 0.7,
     });
 
-    // Save AI resp
+    // Save and return response
     const aiReply = response.choices[0].message.content;
-    const aiMessage = new Chat({ user: "Barney", text: aiReply });
-    await aiMessage.save();
+    await new Chat({ user: "Barney", text: aiReply }).save();
 
-    res.json({ reply: aiReply });
+    res.json({
+      reply: aiReply,
+      debug:
+        process.env.NODE_ENV === "development"
+          ? {
+              usedQuotes: vectorMatches.map((m) => m.metadata.text),
+              tokens: totalTokens,
+            }
+          : null,
+    });
   } catch (error) {
     console.error("Error:", error);
-    res
-      .status(500)
-      .json({ error: "Please! I invented errors. Playbook time! 🔍" });
+    res.status(500).json({
+      error: "Please! I invented errors. Playbook time! 🔍",
+      details: process.env.NODE_ENV === "development" ? error.message : null,
+    });
   }
 });
 
