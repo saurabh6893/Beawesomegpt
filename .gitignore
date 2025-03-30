@@ -1,3 +1,15 @@
-node_modules/
-.env
+# Dependency directories (IGNORE ALL node_modules)
+**/node_modules/
 
+# Environment files (IGNORE ALL .env)
+.env
+*/.env
+*.env
+
+# Lockfiles (IGNORE ALL package-lock.json)
+**/package-lock.json
+
+# Build folders (future-proof)
+frontend/dist/
+frontend/build/
+Server/dist/
