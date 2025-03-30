@@ -4,32 +4,24 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 p-4">
-      <div className="text-center max-w-2xl">
-        <h1 className="text-5xl font-bold text-white mb-6 animate-bounce">
-          Welcome to Legendary Chat!
-        </h1>
-        <p className="text-xl text-purple-200 mb-10">
-          Ready to experience the most awesome chat app ever?
-          <br />
-          (Wait for it...)
-        </p>
-
-        <button
-          onClick={() => navigate("/chat")}
-          className="px-8 py-4 bg-yellow-400 hover:bg-yellow-300 text-purple-900 font-bold text-xl rounded-full 
-                    transition-all duration-300 transform hover:scale-110 shadow-lg hover:shadow-xl
-                    animate-pulse border-2 border-white"
-        >
-          SUIT UP AND CHAT! 💼🎩
-        </button>
-
-        <div className="mt-16 text-purple-300">
-          <p className="text-sm italic">
-            "When I get sad, I stop being sad and be awesome instead."
-            <br />- Barney Stinson
-          </p>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-900 to-purple-900 p-6">
+      {/* Card Container */}
+      <div className="relative w-3/4 min-h-[600px] bg-white rounded-xl shadow-2xl flex flex-col items-center justify-center p-8 pt-24 space-y-6 border-4 border-yellow-400">
+        {/* Image Display - Now popping out */}
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 h-[110%] z-20">
+          <img
+            src="/imgg.png"
+            alt="BroGPT"
+            onClick={() => navigate("/chat")}
+            className="h-full w-auto object-contain drop-shadow-[0_35px_35px_rgba(255,223,0,0.6)] animate-float"
+          />
         </div>
+
+        {/* Footer / Disclaimer */}
+      </div>
+      <div className="absolute bottom-4 text-xs text-gray-500 italic z-30 bg-white/90 px-4 py-2 rounded-lg">
+        📜 Bro Code Disclaimer: "Results may include: 1) Mind-blowing advice, 2)
+        Suit recommendations, 3) Occasional high-fives through the screen."
       </div>
     </div>
   );
