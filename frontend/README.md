@@ -26,7 +26,6 @@ A full-stack chatbot mimicking Barney Stinson from *How I Met Your Mother*, feat
 - MongoDB instance (local or Atlas)
 
 1. **Clone Repository**
-   ```bash
 Install Dependencies
 cd client && npm install
 cd ../server && npm install
