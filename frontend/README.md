@@ -31,7 +31,8 @@ cd client && npm install
 cd ../server && npm install
 
 2 **Environment Variables (server/.env)**
-OPENAI_API_KEY=your_openai_key
+OPENAI_API_KEY=your_openai_![Screenshot from 2025-04-01 17-35-04](https://github.com/user-attachments/assets/ba7d70b9-b7d8-43bd-8928-d2a9a110bd86)
+key
 PINECONE_API_KEY=your_pinecone_key
 MONGO_URL=your_mongodb_uri
 PORT=5000
@@ -44,6 +45,7 @@ cd server && npm start
 
 Frontend:
 cd client && npm run dev
+
 
 
 ![Screenshot from 2025-04-01 17-39-26](https://github.com/user-attachments/assets/a5e5e20e-c644-4686-ab29-23ed76fe400e)
