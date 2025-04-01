@@ -1,54 +1,47 @@
-# React + TypeScript + Vite
+# AI-Powered Character Chat Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack chatbot mimicking Barney Stinson from *How I Met Your Mother*, featuring contextual responses powered by OpenAI GPT-3.5 and vector search capabilities with Pinecone.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Dynamic character persona (Barney Stinson personality traits)
+- Context-aware responses using OpenAI GPT-3.5 + Pinecone vector search
+- Real-time chat animations with GSAP
+- Rate-limited API endpoints (Express)
+- MongoDB chat history persistence
+- Responsive UI with dynamic routing
 
-## Expanding the ESLint configuration
+## Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+**Frontend:** React, TypeScript, GSAP  
+**Backend:** Node.js, Express, MongoDB  
+**AI Services:** OpenAI GPT-3.5, Pinecone  
+**Tools:** Axios, React Router, Playwright (testing)
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## Setup Instructions
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+### Prerequisites
+- OpenAI API key
+- Pinecone API key & index named `barney-chat`
+- MongoDB instance (local or Atlas)
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+1. **Clone Repository**
+   ```bash
+Install Dependencies
+cd client && npm install
+cd ../server && npm install
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+2 **Environment Variables (server/.env)**
+OPENAI_API_KEY=your_openai_key
+PINECONE_API_KEY=your_pinecone_key
+MONGO_URL=your_mongodb_uri
+PORT=5000
+
+3 **CORS Configuration**
+Ensure client/src/App.tsx matches your frontend URL (default: http://localhost:5173)
+
+Backend:
+cd server && npm start
+
+Frontend:
+cd client && npm run dev
