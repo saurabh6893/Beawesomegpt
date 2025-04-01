@@ -33,7 +33,8 @@ cd ../server && npm install
 2 **Environment Variables (server/.env)**
 OPENAI_API_KEY=your_openai_key
 PINECONE_API_KEY=your_pinecone_key
-MONGO_URL=your_mongodb_uri
+MONGO_URL=your_mongodb_uri![Screenshot from 2025-04-01 17-39-26](https://github.com/user-attachments/assets/a5e5e20e-c644-4686-ab29-23ed76fe400e)
+
 PORT=5000
 
 3 **CORS Configuration**
